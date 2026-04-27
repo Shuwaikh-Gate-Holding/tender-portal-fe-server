@@ -1,0 +1,16 @@
+node_modules
+.output
+dist
+.git
+.gitignore
+*.md
+Dockerfile
+docker-compose.yml
+.env
+.vscode
+.tanstack
+pnpm-debug.log
+.skills
+.vscode
+.tanstack
+GEMINI.md
