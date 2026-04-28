@@ -8,6 +8,8 @@ export const Route = createFileRoute('/')({
       } else {
         throw redirect({ to: '/vendors' })
       }
+    } else {
+      throw redirect({ to: '/login' })
     }
   },
   component: App,

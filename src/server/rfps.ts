@@ -46,7 +46,7 @@ export const fetchOpenRfps = createServerFn({
   }
 
   const { data, error } = await query
-
+  console.log(error)
   if (error) {
     console.error('[SERVER] Error loading RFPs:', error)
     return []

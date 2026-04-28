@@ -3,6 +3,7 @@ import BaseNavbar from '../../components/BaseNavbar'
 import CustomButton from '../../components/CustomButton'
 import type { Rfp } from '../../server/rfps'
 import { fetchOpenRfps } from '../../server/rfps'
+import { logoutAction } from '../../server/user'
 
 export const Route = createFileRoute('/vendors/')({
   beforeLoad: ({ context }) => {
@@ -22,10 +23,9 @@ export const Route = createFileRoute('/vendors/')({
 function VendorDashboard() {
   const rfps = Route.useLoaderData()
   const router = useRouter()
-  const { supabase } = Route.useRouteContext()
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    await logoutAction()
     await router.invalidate()
     router.navigate({ to: '/login' })
   }

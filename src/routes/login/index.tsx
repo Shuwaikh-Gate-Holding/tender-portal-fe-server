@@ -2,14 +2,14 @@
 import { fetchUserSession } from '#/server/user'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import React, { useState } from 'react'
+import { signinOTPApi, verifyOTPApi } from './server'
 
-export const Route = createFileRoute('/login')({
+export const Route = createFileRoute('/login/')({
   component: LoginPage,
 })
 
 function LoginPage() {
   const router = useRouter()
-  const { supabase } = Route.useRouteContext()
   const [email, setEmail] = useState('')
   const [otp, setOtp] = useState('')
   const [step, setStep] = useState<'email' | 'otp'>('email')
@@ -18,16 +18,9 @@ function LoginPage() {
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault()
     setStatus('Sending verification code...')
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true,
-      },
-    })
-
+    const { error } = await signinOTPApi({ data: { email } })
     if (error) {
-      setStatus(`Error: ${error.message}`)
+      setStatus(`Error: ${error}`)
     } else {
       setStatus('Check your email for the 6-digit code!')
       setStep('otp')
@@ -38,18 +31,14 @@ function LoginPage() {
     e.preventDefault()
     setStatus('Verifying code...')
 
-    const { data, error } = await supabase.auth.verifyOtp({
-      email,
-      token: otp,
-      type: 'email',
-    })
+    const { isSessionCreated, error } = await verifyOTPApi({ data: { email, otp } })
 
     if (error) {
-      setStatus(`Error: ${error.message}`)
+      setStatus(`Error: ${error}`)
       return
     }
 
-    if (!data.session) {
+    if (!isSessionCreated) {
       setStatus('Error: No session created')
       return
     }
@@ -75,15 +64,10 @@ function LoginPage() {
   const handleResendOtp = async () => {
     setStatus('Resending code...')
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true,
-      },
-    })
+    const { error } = await signinOTPApi({ data: { email } })
 
     if (error) {
-      setStatus(`Error: ${error.message}`)
+      setStatus(`Error: ${error}`)
     } else {
       setStatus('New code sent! Check your email.')
     }

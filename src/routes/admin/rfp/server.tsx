@@ -26,7 +26,6 @@ export const createRfpAction = createServerFn({
       .insert([rfp])
       .select()
       .single()
-
     if (insertError) throw insertError
 
     // Create terms if provided
@@ -44,6 +43,35 @@ export const createRfpAction = createServerFn({
 
 
 
+export const uploadRfpFiles = createServerFn({ method: "POST" })
+  .inputValidator((data) => {
+    if (!(data instanceof FormData)) {
+      throw new Error('Expected FormData')
+    }
+    const filePath = data.get('filePath') as string
+    const selectedFile = data.get('selectedFile') as File
+    if (!filePath || !selectedFile) {
+      throw new Error('Missing filePath or selectedFile')
+    }
+    return { filePath, selectedFile }
+  })
+  .handler(async ({ data: { filePath, selectedFile } }) => {
+    const supabase = getSupabaseServerClient()
+    let attachmentUrl;
+    const { data: _, error: uploadError } = await supabase.storage
+      .from('rfp-files')
+      .upload(filePath, selectedFile)
 
-
-
+    if (uploadError) {
+      console.error('[RFP UPLOAD] Upload error:', uploadError)
+      throw new Error(
+        `File upload failed: ${uploadError.message}. Please ensure the 'rfp-files' storage bucket exists in Supabase.`,
+      )
+    } else {
+      const { data: urlData } = supabase.storage
+        .from('rfp-files')
+        .getPublicUrl(filePath)
+      attachmentUrl = urlData.publicUrl
+    }
+    return { attachmentUrl }
+  })

@@ -41,3 +41,12 @@ export const fetchUserSession = createServerFn({
 
   return { user: session.user, role: 'vendor' }
 })
+
+export const logoutAction = createServerFn({
+  method: 'POST',
+}).handler(async () => {
+  const supabase = getSupabaseServerClient()
+  const { error } = await supabase.auth.signOut()
+  if (error) throw error
+  return { success: true }
+})

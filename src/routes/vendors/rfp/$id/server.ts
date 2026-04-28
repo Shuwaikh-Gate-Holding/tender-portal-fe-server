@@ -218,6 +218,49 @@ export const placeBidAction = createServerFn({
     return { success: true }
   })
 
+export const uploadBidAttachments = createServerFn({ method: 'POST' })
+  .inputValidator((data) => {
+    if (!(data instanceof FormData)) {
+      throw new Error('Expected FormData')
+    }
+    return data
+  })
+  .handler(async ({ data }) => {
+    const supabase = getSupabaseServerClient()
+    const rfpId = data.get('rfpId') as string
+    const files = data.getAll('files') as File[]
+
+    if (!rfpId || files.length === 0) {
+      throw new Error('Missing rfpId or files')
+    }
+
+    const attachmentUrls: string[] = []
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${rfpId}-${Date.now()}-${i}.${fileExt}`
+      const filePath = `bid-attachments/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('rfp-files')
+        .upload(filePath, file)
+
+      if (uploadError) {
+        console.error('[BID UPLOAD] Upload error:', uploadError)
+        throw new Error(`File upload failed for ${file.name}: ${uploadError.message}`)
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('rfp-files')
+        .getPublicUrl(filePath)
+      
+      attachmentUrls.push(urlData.publicUrl)
+    }
+
+    return { attachmentUrls }
+  })
+
 
 
 

@@ -1,31 +1,31 @@
+import {
+  Alert,
+  Badge,
+  Box,
+  Button,
+  Divider,
+  FileInput,
+  Grid,
+  Group,
+  Loader,
+  Paper,
+  Stack,
+  Text,
+  TextInput,
+  Textarea,
+  Title,
+} from '@mantine/core'
+import { useQuery } from '@tanstack/react-query'
+import { Award, Info, Timer, TrendingDown } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 import {
+  checkVendorApproval,
   fetchAuctionTicker,
   fetchBids,
   fetchMyRank,
   placeBidAction,
-  checkVendorApproval,
+  uploadBidAttachments,
 } from '../server'
-import type { Bid } from '../server'
-import { Route } from '..'
-import {
-  Stack,
-  Text,
-  Paper,
-  Group,
-  TextInput,
-  Textarea,
-  FileInput,
-  Button,
-  Badge,
-  Alert,
-  Title,
-  Box,
-  Divider,
-  Grid,
-  Loader,
-} from '@mantine/core'
-import { Timer, TrendingDown, Award, Info } from 'lucide-react'
 
 interface AuctionBoardProps {
   rfp: {
@@ -37,38 +37,43 @@ interface AuctionBoardProps {
   }
 }
 
-interface Ticker {
-  best_bid: number
-  seq: number
-  last_bid_at: string
-}
-
 const AuctionBoard: React.FC<AuctionBoardProps> = ({ rfp }) => {
-  const { supabase } = Route.useRouteContext()
-  const [ticker, setTicker] = useState<Ticker | null>(null)
-  const [myRank, setMyRank] = useState<number | null>(null)
   const [myBid, setMyBid] = useState('')
   const [bidComments, setBidComments] = useState('')
   const [bidFiles, setBidFiles] = useState<File[]>([])
   const [message, setMessage] = useState('')
-  const [allBids, setAllBids] = useState<Bid[]>([])
-  const [isApproved, setIsApproved] = useState(false)
   const [timeRemaining, setTimeRemaining] = useState('')
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<string>('')
-  const [loading, setLoading] = useState(true)
 
   const isAuctionEnded = new Date().getTime() >= new Date(rfp.ends_at).getTime()
 
+  // Polling for ticker updates (3s interval)
+  const { data: ticker } = useQuery({
+    queryKey: ['ticker', rfp.id],
+    queryFn: () => fetchAuctionTicker({ data: { rfpId: rfp.id } }),
+    refetchInterval: isAuctionEnded ? false : 3000,
+  })
+
+  // Polling for all bids (3s interval)
+  const { data: allBids = [] } = useQuery({
+    queryKey: ['bids', rfp.id],
+    queryFn: () => fetchBids({ data: { rfpId: rfp.id } }),
+    refetchInterval: isAuctionEnded ? false : 3000,
+  })
+
+  // Fetch my rank whenever ticker updates
+  const { data: myRank } = useQuery({
+    queryKey: ['myRank', rfp.id, ticker?.seq],
+    queryFn: () => fetchMyRank({ data: { rfpId: rfp.id } }),
+    enabled: !!ticker,
+  })
+
   // Check vendor approval status
-  useEffect(() => {
-    const checkApproval = async () => {
-      const approved = await checkVendorApproval()
-      setIsApproved(approved)
-      setLoading(false)
-    }
-    checkApproval()
-  }, [])
+  const { data: isApproved = false, isLoading: loadingApproval } = useQuery({
+    queryKey: ['vendorApproval'],
+    queryFn: () => checkVendorApproval(),
+  })
 
   // Countdown timer
   useEffect(() => {
@@ -97,81 +102,6 @@ const AuctionBoard: React.FC<AuctionBoardProps> = ({ rfp }) => {
     return () => clearInterval(interval)
   }, [rfp.ends_at])
 
-  // Subscribe to ticker updates
-  useEffect(() => {
-    const loadTicker = async () => {
-      const data = await fetchAuctionTicker({ data: { rfpId: rfp.id } })
-      if (data) {
-        setTicker(data)
-      }
-    }
-    loadTicker()
-
-    const channel = supabase.channel(`ticker-${rfp.id}`)
-    channel
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'auction_ticker',
-          filter: `rfp_id=eq.${rfp.id}`,
-        },
-        (payload) => {
-          console.log('[REALTIME] Ticker update received:', payload)
-          const updated = payload.new as any
-          setTicker({
-            best_bid: updated.current_best_bid,
-            seq: updated.bid_count,
-            last_bid_at: updated.last_updated,
-          })
-        },
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [rfp.id, supabase])
-
-  // Fetch all bids
-  useEffect(() => {
-    const loadBids = async () => {
-      const data = await fetchBids({ data: { rfpId: rfp.id } })
-      setAllBids(data)
-    }
-    loadBids()
-
-    const channel = supabase.channel(`bids-${rfp.id}`)
-    channel
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'bids',
-          filter: `rfp_id=eq.${rfp.id}`,
-        },
-        () => {
-          loadBids()
-        },
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [rfp.id, supabase])
-
-  // Fetch my rank
-  useEffect(() => {
-    const loadRank = async () => {
-      const rank = await fetchMyRank({ data: { rfpId: rfp.id } })
-      setMyRank(rank)
-    }
-    loadRank()
-  }, [rfp.id, ticker?.seq])
-
   const handleBid = async () => {
     const now = new Date().getTime()
     const endTime = new Date(rfp.ends_at).getTime()
@@ -196,43 +126,26 @@ const AuctionBoard: React.FC<AuctionBoardProps> = ({ rfp }) => {
       }
     }
 
-    const attachmentUrls: string[] = []
+    let attachmentUrls: string[] = []
     if (bidFiles.length > 0) {
       setUploading(true)
       setMessage('Uploading files...')
+      setUploadProgress(`Uploading ${bidFiles.length} files...`)
 
-      for (let i = 0; i < bidFiles.length; i++) {
-        const file = bidFiles[i]
-        setUploadProgress(
-          `Uploading ${i + 1} of ${bidFiles.length}: ${file.name}`,
-        )
+      try {
+        const formData = new FormData()
+        formData.append('rfpId', rfp.id)
+        bidFiles.forEach((file) => {
+          formData.append('files', file)
+        })
 
-        try {
-          const fileExt = file.name.split('.').pop()
-          const fileName = `${rfp.id}-${Date.now()}-${i}.${fileExt}`
-          const filePath = `bid-attachments/${fileName}`
-
-          const { error: uploadError } = await supabase.storage
-            .from('rfp-files')
-            .upload(filePath, file)
-
-          if (uploadError) {
-            setMessage(`Error uploading ${file.name}: ${uploadError.message}`)
-            setUploading(false)
-            setUploadProgress('')
-            return
-          }
-
-          const { data: urlData } = supabase.storage
-            .from('rfp-files')
-            .getPublicUrl(filePath)
-          attachmentUrls.push(urlData.publicUrl)
-        } catch (err) {
-          setMessage(`Error uploading ${file.name}`)
-          setUploading(false)
-          setUploadProgress('')
-          return
-        }
+        const result = await uploadBidAttachments({ data: formData })
+        attachmentUrls = result.attachmentUrls
+      } catch (err: any) {
+        setMessage(`Error uploading files: ${err.message}`)
+        setUploading(false)
+        setUploadProgress('')
+        return
       }
 
       setUploading(false)
@@ -258,7 +171,7 @@ const AuctionBoard: React.FC<AuctionBoardProps> = ({ rfp }) => {
     }
   }
 
-  if (loading) {
+  if (loadingApproval) {
     return (
       <Group justify="center" py="xl">
         <Loader />

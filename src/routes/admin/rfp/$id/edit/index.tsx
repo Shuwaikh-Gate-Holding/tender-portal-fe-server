@@ -14,22 +14,30 @@ import {
   Text,
   TextInput,
   Textarea,
+  Anchor,
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
-import { fetchCategories } from '../categories/server'
-import { createRfpAction, uploadRfpFiles } from './server'
+import { fetchCategories, uploadRfpFiles } from '../../server'
+import { fetchRfpForEdit, updateRfpAction } from './server'
+import { getKuwaitDateTimeInputValue } from '#/utils/timezone'
 
-export const Route = createFileRoute('/admin/rfp/create')({
-  component: RouteComponent,
-  loader: async () => {
-    return { categories: await fetchCategories() }
+export const Route = createFileRoute('/admin/rfp/$id/edit/')({
+  component: EditRfp,
+  loader: async ({ params: { id } }) => {
+    const [categories, { rfp, terms }] = await Promise.all([
+      fetchCategories(),
+      fetchRfpForEdit({ data: { id } }),
+    ])
+
+    return { categories, rfp, terms }
   },
 })
 
-function RouteComponent() {
-  const { categories } = Route.useLoaderData()
+function EditRfp() {
+  const { categories, rfp, terms } = Route.useLoaderData()
+  const { id } = Route.useParams()
   const navigate = Route.useNavigate()
 
   const [loading, setLoading] = useState(false)
@@ -37,15 +45,15 @@ function RouteComponent() {
 
   const form = useForm({
     initialValues: {
-      title: '',
-      description: '',
-      starts_at: '',
-      ends_at: '',
-      minimum_decrement: 100,
-      base_amount: 0,
-      terms: '',
-      category_id: '',
-      bid_direction: 'reverse',
+      title: rfp.title || '',
+      description: rfp.description || '',
+      starts_at: rfp.starts_at ? getKuwaitDateTimeInputValue(rfp.starts_at) : '',
+      ends_at: rfp.ends_at ? getKuwaitDateTimeInputValue(rfp.ends_at) : '',
+      minimum_decrement: rfp.minimum_decrement || 100,
+      base_amount: rfp.base_amount || 0,
+      terms: terms || '',
+      category_id: rfp.category_id ? rfp.category_id.toString() : '',
+      bid_direction: rfp.bid_direction || 'reverse',
       attachment: null as File | null,
     },
     validate: {
@@ -66,22 +74,23 @@ function RouteComponent() {
     setError('')
 
     try {
-      let attachmentUrl = null
+      let attachmentUrl = rfp.attachment_url
 
-      // Upload file to Supabase Storage if selected
+      // Upload file to Supabase Storage if a new one is selected
       if (values.attachment) {
         const selectedFile = values.attachment
         console.log('[RFP UPLOAD] Starting file upload:', selectedFile.name)
         const fileExt = selectedFile.name.split('.').pop()
         const fileName = `${Math.random()}.${fileExt}`
         const filePath = `rfp-attachments/${fileName}`
-        const formdata = new FormData();
-        formdata.append('filePath', filePath);
-        formdata.append('selectedFile', selectedFile);
-        // @ts-ignore
-        const result = await uploadRfpFiles(formdata);
-        attachmentUrl = result?.attachmentUrl;
 
+        const formdata = new FormData()
+        formdata.append('filePath', filePath)
+        formdata.append('selectedFile', selectedFile)
+
+        // @ts-ignore
+        const result = await uploadRfpFiles(formdata)
+        attachmentUrl = result?.attachmentUrl
       }
 
       // Convert datetime-local values to Kuwait timezone ISO strings
@@ -90,28 +99,25 @@ function RouteComponent() {
         : null
       const endsAtKuwait = values.ends_at ? `${values.ends_at}:00+03:00` : null
 
-      const rfpData: any = {
+      const updateData: any = {
+        id,
         title: values.title,
         description: values.description,
         starts_at: startsAtKuwait,
         ends_at: endsAtKuwait,
         minimum_decrement: values.minimum_decrement,
+        base_amount: values.base_amount,
         category_id: values.category_id ? parseInt(values.category_id) : null,
         bid_direction: values.bid_direction,
-        status: 'draft',
         terms: values.terms,
-        base_amount: values.base_amount,
+        attachment_url: attachmentUrl,
       }
 
-      if (attachmentUrl) {
-        rfpData.attachment_url = attachmentUrl
-      }
+      await updateRfpAction({ data: updateData })
 
-      await createRfpAction({ data: rfpData })
-
-      navigate({ to: '/admin' })
+      navigate({ to: '/admin/rfp/$id', params: { id } })
     } catch (err: any) {
-      setError(err.message || 'Failed to create RFP')
+      setError(err.message || 'Failed to update RFP')
     } finally {
       setLoading(false)
     }
@@ -120,13 +126,13 @@ function RouteComponent() {
   return (
     <div className="min-h-screen bg-gray-50">
       <BaseNavbar
-        title="Create New RFP"
+        title="Edit RFP"
         actionButton={
           <CustomButton
             buttonType="secondary"
-            onClick={() => navigate({ to: '/admin' })}
+            onClick={() => navigate({ to: '/admin/rfp/$id', params: { id } })}
           >
-            Back to Dashboard
+            Cancel
           </CustomButton>
         }
       />
@@ -238,12 +244,22 @@ function RouteComponent() {
                 description="Vendors must read and accept these terms before they can place bids"
               />
 
-              <FileInput
-                label="Attachment (Optional)"
-                placeholder="Upload file"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
-                {...form.getInputProps('attachment')}
-              />
+              <Box>
+                <FileInput
+                  label="Attachment"
+                  placeholder={rfp.attachment_url ? "Change attachment" : "Upload file"}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+                  {...form.getInputProps('attachment')}
+                />
+                {rfp.attachment_url && !form.values.attachment && (
+                  <Text size="xs" mt={4} c="dimmed">
+                    Current attachment: <Anchor href={rfp.attachment_url} target="_blank" size="xs">View File</Anchor>
+                  </Text>
+                )}
+                <Text size="xs" mt={4} c="dimmed">
+                  Leave empty to keep current attachment, or select a new file to replace it
+                </Text>
+              </Box>
 
               {error && (
                 <Alert color="red" title="Error" radius="md">
@@ -259,11 +275,11 @@ function RouteComponent() {
                   className="flex-1"
                   color="indigo"
                 >
-                  Create RFP
+                  Save Changes
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => navigate({ to: '/admin' })}
+                  onClick={() => navigate({ to: '/admin/rfp/$id', params: { id } })}
                   size="md"
                   color="gray"
                 >

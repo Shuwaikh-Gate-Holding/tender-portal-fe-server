@@ -1,12 +1,16 @@
 import { QueryClient } from '@tanstack/react-query'
-import { supabase } from '../../utils/supabase'
 
 export function getContext() {
-  const queryClient = new QueryClient()
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        refetchOnWindowFocus: false
+      }
+    }
+  })
 
   return {
     queryClient,
-    supabase,
   }
 }
-export default function TanstackQueryProvider() {}
+export default function TanstackQueryProvider() { }

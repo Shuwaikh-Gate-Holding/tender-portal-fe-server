@@ -9,9 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VendorsIndexRouteImport } from './routes/vendors/index'
+import { Route as LoginIndexRouteImport } from './routes/login/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as VendorsAddRouteImport } from './routes/vendors/add'
 import { Route as AdminVendorsIndexRouteImport } from './routes/admin/vendors/index'
@@ -20,12 +20,8 @@ import { Route as AdminVendorsAddRouteImport } from './routes/admin/vendors/add'
 import { Route as AdminRfpCreateRouteImport } from './routes/admin/rfp/create'
 import { Route as VendorsRfpIdIndexRouteImport } from './routes/vendors/rfp/$id/index'
 import { Route as AdminRfpIdIndexRouteImport } from './routes/admin/rfp/$id/index'
+import { Route as AdminRfpIdEditIndexRouteImport } from './routes/admin/rfp/$id/edit/index'
 
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -34,6 +30,11 @@ const IndexRoute = IndexRouteImport.update({
 const VendorsIndexRoute = VendorsIndexRouteImport.update({
   id: '/vendors/',
   path: '/vendors/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginIndexRoute = LoginIndexRouteImport.update({
+  id: '/login/',
+  path: '/login/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -76,12 +77,17 @@ const AdminRfpIdIndexRoute = AdminRfpIdIndexRouteImport.update({
   path: '/admin/rfp/$id/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRfpIdEditIndexRoute = AdminRfpIdEditIndexRouteImport.update({
+  id: '/admin/rfp/$id/edit/',
+  path: '/admin/rfp/$id/edit/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/login': typeof LoginRoute
   '/vendors/add': typeof VendorsAddRoute
   '/admin/': typeof AdminIndexRoute
+  '/login/': typeof LoginIndexRoute
   '/vendors/': typeof VendorsIndexRoute
   '/admin/rfp/create': typeof AdminRfpCreateRoute
   '/admin/vendors/add': typeof AdminVendorsAddRoute
@@ -89,12 +95,13 @@ export interface FileRoutesByFullPath {
   '/admin/vendors/': typeof AdminVendorsIndexRoute
   '/admin/rfp/$id/': typeof AdminRfpIdIndexRoute
   '/vendors/rfp/$id/': typeof VendorsRfpIdIndexRoute
+  '/admin/rfp/$id/edit/': typeof AdminRfpIdEditIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/login': typeof LoginRoute
   '/vendors/add': typeof VendorsAddRoute
   '/admin': typeof AdminIndexRoute
+  '/login': typeof LoginIndexRoute
   '/vendors': typeof VendorsIndexRoute
   '/admin/rfp/create': typeof AdminRfpCreateRoute
   '/admin/vendors/add': typeof AdminVendorsAddRoute
@@ -102,13 +109,14 @@ export interface FileRoutesByTo {
   '/admin/vendors': typeof AdminVendorsIndexRoute
   '/admin/rfp/$id': typeof AdminRfpIdIndexRoute
   '/vendors/rfp/$id': typeof VendorsRfpIdIndexRoute
+  '/admin/rfp/$id/edit': typeof AdminRfpIdEditIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/login': typeof LoginRoute
   '/vendors/add': typeof VendorsAddRoute
   '/admin/': typeof AdminIndexRoute
+  '/login/': typeof LoginIndexRoute
   '/vendors/': typeof VendorsIndexRoute
   '/admin/rfp/create': typeof AdminRfpCreateRoute
   '/admin/vendors/add': typeof AdminVendorsAddRoute
@@ -116,14 +124,15 @@ export interface FileRoutesById {
   '/admin/vendors/': typeof AdminVendorsIndexRoute
   '/admin/rfp/$id/': typeof AdminRfpIdIndexRoute
   '/vendors/rfp/$id/': typeof VendorsRfpIdIndexRoute
+  '/admin/rfp/$id/edit/': typeof AdminRfpIdEditIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/login'
     | '/vendors/add'
     | '/admin/'
+    | '/login/'
     | '/vendors/'
     | '/admin/rfp/create'
     | '/admin/vendors/add'
@@ -131,12 +140,13 @@ export interface FileRouteTypes {
     | '/admin/vendors/'
     | '/admin/rfp/$id/'
     | '/vendors/rfp/$id/'
+    | '/admin/rfp/$id/edit/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/login'
     | '/vendors/add'
     | '/admin'
+    | '/login'
     | '/vendors'
     | '/admin/rfp/create'
     | '/admin/vendors/add'
@@ -144,12 +154,13 @@ export interface FileRouteTypes {
     | '/admin/vendors'
     | '/admin/rfp/$id'
     | '/vendors/rfp/$id'
+    | '/admin/rfp/$id/edit'
   id:
     | '__root__'
     | '/'
-    | '/login'
     | '/vendors/add'
     | '/admin/'
+    | '/login/'
     | '/vendors/'
     | '/admin/rfp/create'
     | '/admin/vendors/add'
@@ -157,13 +168,14 @@ export interface FileRouteTypes {
     | '/admin/vendors/'
     | '/admin/rfp/$id/'
     | '/vendors/rfp/$id/'
+    | '/admin/rfp/$id/edit/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  LoginRoute: typeof LoginRoute
   VendorsAddRoute: typeof VendorsAddRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  LoginIndexRoute: typeof LoginIndexRoute
   VendorsIndexRoute: typeof VendorsIndexRoute
   AdminRfpCreateRoute: typeof AdminRfpCreateRoute
   AdminVendorsAddRoute: typeof AdminVendorsAddRoute
@@ -171,17 +183,11 @@ export interface RootRouteChildren {
   AdminVendorsIndexRoute: typeof AdminVendorsIndexRoute
   AdminRfpIdIndexRoute: typeof AdminRfpIdIndexRoute
   VendorsRfpIdIndexRoute: typeof VendorsRfpIdIndexRoute
+  AdminRfpIdEditIndexRoute: typeof AdminRfpIdEditIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -194,6 +200,13 @@ declare module '@tanstack/react-router' {
       path: '/vendors'
       fullPath: '/vendors/'
       preLoaderRoute: typeof VendorsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login/': {
+      id: '/login/'
+      path: '/login'
+      fullPath: '/login/'
+      preLoaderRoute: typeof LoginIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -252,14 +265,21 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRfpIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/rfp/$id/edit/': {
+      id: '/admin/rfp/$id/edit/'
+      path: '/admin/rfp/$id/edit'
+      fullPath: '/admin/rfp/$id/edit/'
+      preLoaderRoute: typeof AdminRfpIdEditIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  LoginRoute: LoginRoute,
   VendorsAddRoute: VendorsAddRoute,
   AdminIndexRoute: AdminIndexRoute,
+  LoginIndexRoute: LoginIndexRoute,
   VendorsIndexRoute: VendorsIndexRoute,
   AdminRfpCreateRoute: AdminRfpCreateRoute,
   AdminVendorsAddRoute: AdminVendorsAddRoute,
@@ -267,6 +287,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminVendorsIndexRoute: AdminVendorsIndexRoute,
   AdminRfpIdIndexRoute: AdminRfpIdIndexRoute,
   VendorsRfpIdIndexRoute: VendorsRfpIdIndexRoute,
+  AdminRfpIdEditIndexRoute: AdminRfpIdEditIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

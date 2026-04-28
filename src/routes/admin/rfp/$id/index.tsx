@@ -12,72 +12,41 @@ import {
   Paper,
   Stack,
   Text,
-  Title
+  Title,
+  Loader
 } from '@mantine/core'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { Calendar, FileText } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import type { Bid } from './server'
+import { useQuery } from '@tanstack/react-query'
 import { fetchBids, fetchRfpDetail, updateRfpStatusAction } from './server'
 
 export const Route = createFileRoute('/admin/rfp/$id/')({
   component: AdminRfpDetail,
-  loader: async ({ params: { id } }) => {
-    const [rfp, bids] = await Promise.all([
-      fetchRfpDetail({ data: { id } }),
-      fetchBids({ data: { id } }),
-    ])
-
-    return { rfp, initialBids: bids }
-  },
 })
 
 function AdminRfpDetail() {
-  const { rfp, initialBids } = Route.useLoaderData()
   const { id } = Route.useParams()
-  const { supabase } = Route.useRouteContext()
   const router = useRouter()
-  const [bids, setBids] = useState<Bid[]>(initialBids)
 
-  useEffect(() => {
-    const fetchLatestBids = async () => {
-      try {
-        const latestBids = await fetchBids({ data: { id } })
-        setBids(latestBids)
-      } catch (error) {
-        console.error('Error fetching bids:', error)
-      }
-    }
+  // Poll for RFP details
+  const { data: rfp, isLoading: loadingRfp, refetch } = useQuery({
+    queryKey: ['adminRfpDetail', id],
+    queryFn: () => fetchRfpDetail({ data: { id } }),
+  })
 
-    // Subscribe to real-time bid updates
-    const channel = supabase.channel(`admin-bids-${id}`)
-    channel
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'bids',
-          filter: `rfp_id=eq.${id}`,
-        },
-        (payload) => {
-          console.log('[ADMIN] Real-time bid update:', payload)
-          fetchLatestBids()
-        },
-      )
-      .subscribe((status) => {
-        console.log('[ADMIN] Bids subscription status:', status)
-      })
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [id, supabase])
+  // Poll for bids (5s interval)
+  const { data: bids = [], refetch: refetchBids } = useQuery({
+    queryKey: ['adminBids', id],
+    queryFn: () => fetchBids({ data: { id } }),
+    refetchInterval: rfp?.status === 'open' ? 5000 : false,
+    enabled: !!rfp,
+  })
 
   const updateStatus = async (newStatus: string) => {
     try {
       await updateRfpStatusAction({ data: { id, status: newStatus } })
-      await router.invalidate()
+      refetch()
+      refetchBids()
     } catch (error: any) {
       alert('Error updating status: ' + error.message)
     }
@@ -117,7 +86,7 @@ function AdminRfpDetail() {
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
     link.setAttribute('href', url)
-    link.setAttribute('download', `${rfp.title.replace(/\s+/g, '_')}_bids.csv`)
+    link.setAttribute('download', `${rfp?.title.replace(/\s+/g, '_')}_bids.csv`)
     link.style.visibility = 'hidden'
     document.body.appendChild(link)
     link.click()
@@ -135,6 +104,14 @@ function AdminRfpDetail() {
       default:
         return 'blue'
     }
+  }
+
+  if (loadingRfp || !rfp) {
+    return (
+      <Group justify="center" py="xl">
+        <Loader />
+      </Group>
+    )
   }
 
   return (
@@ -364,7 +341,7 @@ function AdminRfpDetail() {
                       variant="outline"
                       color="blue"
                       onClick={() => router.navigate({
-                        to: '/admin/rfp/$id', // Placeholder or update if edit route exists
+                        to: '/admin/rfp/$id/edit',
                         params: { id: rfp.id }
                       })}
                       fullWidth

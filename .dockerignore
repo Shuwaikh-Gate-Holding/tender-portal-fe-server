@@ -6,7 +6,6 @@ dist
 *.md
 Dockerfile
 docker-compose.yml
-.env
 .vscode
 .tanstack
 pnpm-debug.log

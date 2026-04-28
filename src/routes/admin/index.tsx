@@ -1,3 +1,4 @@
+import { Badge, Button } from '@mantine/core'
 import {
   createFileRoute,
   Outlet,
@@ -12,7 +13,7 @@ import {
   publishRfpAction,
   updateRfpStatus,
 } from '../../server/admin'
-import { Badge, Button } from '@mantine/core'
+import { logoutUser } from './server'
 
 export const Route = createFileRoute('/admin/')({
   beforeLoad: ({ context }) => {
@@ -33,10 +34,9 @@ function AdminDashboard() {
   const { rfps, stats } = Route.useLoaderData()
   const router = useRouter()
   const navigate = Route.useNavigate()
-  const { supabase } = Route.useRouteContext()
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    await logoutUser()
     await router.invalidate()
     router.navigate({ to: '/login' })
   }
