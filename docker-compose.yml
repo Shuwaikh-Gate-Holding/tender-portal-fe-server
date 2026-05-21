@@ -15,6 +15,7 @@ services:
     env_file: .env
   proxy:
     image: nginx:alpine
+    platform: linux/amd64
     container_name: tender-portal-proxy
     ports:
       - '80:80'
