@@ -19,6 +19,7 @@ services:
     container_name: tender-portal-proxy
     ports:
       - '80:80'
+      - '443:443'
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     restart: always
