@@ -8,7 +8,7 @@ WORKDIR /app
 # Stage 2: Dependencies
 FROM base AS deps
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --dangerously-allow-all-builds
 
 # Stage 3: Build
 FROM base AS build

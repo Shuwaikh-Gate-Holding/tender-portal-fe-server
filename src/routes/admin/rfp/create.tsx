@@ -72,18 +72,33 @@ function RouteComponent() {
       if (values.attachment) {
         const selectedFile = values.attachment
         console.log('[RFP UPLOAD] Starting file upload:', selectedFile.name)
+
         const fileExt = selectedFile.name.split('.').pop()
         const fileName = `${Math.random()}.${fileExt}`
         const filePath = `rfp-attachments/${fileName}`
-        const formdata = new FormData();
-        formdata.append('filePath', filePath);
-        formdata.append('selectedFile', selectedFile);
-        // @ts-ignore
-        const result = await uploadRfpFiles(formdata);
-        attachmentUrl = result?.attachmentUrl;
 
+        // Convert File to Base64 safely
+        const base64Data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => {
+            const base64String = (reader.result as string).split(',')[1]
+            resolve(base64String)
+          }
+          reader.onerror = (error) => reject(error)
+          reader.readAsDataURL(selectedFile)
+        })
+
+        // FIX: Wrap the payload inside the "data" property
+        const result = await uploadRfpFiles({
+          data: {
+            filePath,
+            base64Data,
+            mimeType: selectedFile.type,
+          },
+        })
+
+        attachmentUrl = result?.attachmentUrl
       }
-
       // Convert datetime-local values to Kuwait timezone ISO strings
       const startsAtKuwait = values.starts_at
         ? `${values.starts_at}:00+03:00`

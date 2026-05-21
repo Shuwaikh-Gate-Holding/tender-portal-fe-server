@@ -41,26 +41,26 @@ export const createRfpAction = createServerFn({
     return data
   })
 
-
-
-export const uploadRfpFiles = createServerFn({ method: "POST" })
-  .inputValidator((data) => {
-    if (!(data instanceof FormData)) {
-      throw new Error('Expected FormData')
+export const uploadRfpFiles = createServerFn({ method: 'POST' })
+  .inputValidator((data: any) => {
+    if (!data || !data.filePath || !data.base64Data) {
+      throw new Error('Missing file payload details')
     }
-    const filePath = data.get('filePath') as string
-    const selectedFile = data.get('selectedFile') as File
-    if (!filePath || !selectedFile) {
-      throw new Error('Missing filePath or selectedFile')
-    }
-    return { filePath, selectedFile }
+    return data as { filePath: string; base64Data: string; mimeType: string }
   })
-  .handler(async ({ data: { filePath, selectedFile } }) => {
+  .handler(async ({ data: { filePath, base64Data, mimeType } }) => {
     const supabase = getSupabaseServerClient()
-    let attachmentUrl;
+    let attachmentUrl
+
+    // Convert Base64 string back to a standard server Buffer object
+    const fileBuffer = Buffer.from(base64Data, 'base64')
+
     const { data: _, error: uploadError } = await supabase.storage
       .from('rfp-files')
-      .upload(filePath, selectedFile)
+      .upload(filePath, fileBuffer, {
+        contentType: mimeType,
+        upsert: true,
+      })
 
     if (uploadError) {
       console.error('[RFP UPLOAD] Upload error:', uploadError)
